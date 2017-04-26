@@ -12,7 +12,7 @@ class Pokemon {
 
     private var _name: String!
     private var _pokedexID: Int!
-
+    
     // creating getters
     var name: String {
         return _name
