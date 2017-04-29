@@ -7,11 +7,20 @@
 //
 
 import UIKit
+import AVFoundation
 
-class ViewController: UIViewController, UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
+class ViewController: UIViewController, UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, UISearchBarDelegate {
 
     @IBOutlet weak var collection: UICollectionView!
+    @IBOutlet weak var searchBar: UISearchBar!
 
+    // create a music player
+    var musicPlayer: AVAudioPlayer!
+    
+    // arrays to store pokemon data
+    var pokemon = [Pokemon]()
+    var filteredPokemon = [Pokemon]()
+    var inSearchMode = false
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -19,6 +28,55 @@ class ViewController: UIViewController, UICollectionViewDelegate, UICollectionVi
         
         collection.dataSource = self
         collection.delegate = self
+        searchBar.delegate = self
+        
+        // change the button from 'search' to 'done'
+        searchBar.returnKeyType = .done
+        
+        parsePokemonCSV()
+        initAudio()
+    }
+    
+    
+    func initAudio() {
+        
+        let path = Bundle.main.path(forResource: "music", ofType: "mp3")!
+        
+        do {
+            musicPlayer = try AVAudioPlayer(contentsOf: URL(string: path)!)
+            musicPlayer.prepareToPlay()
+            musicPlayer.numberOfLoops = -1          // loops continuously
+            musicPlayer.play()
+            
+        } catch let err as NSError {
+            print(err.debugDescription)
+        }
+    
+    }
+    
+    
+    func parsePokemonCSV() {
+    
+        let path = Bundle.main.path(forResource: "pokemon", ofType: "csv")!
+        
+        do {
+            
+            let csv = try CSV(contentsOfURL: path)
+            let rows = csv.rows         // rows are returned as an array of dictionaries
+            
+            for row in rows {
+                
+                // here, force-unwrapping is okay because we have all the data (we know it's there!)
+                let pokeId = Int(row["id"]!)!
+                let name = row["identifier"]!
+                
+                let poke = Pokemon(name: name, pokedexID: pokeId)
+                pokemon.append(poke)
+            }
+            
+        } catch let err as NSError {
+            print(err)
+        }
     }
     
     
@@ -28,9 +86,15 @@ class ViewController: UIViewController, UICollectionViewDelegate, UICollectionVi
         if let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "PokeCell", for: indexPath) as? PokeCell {
             
             // create the pokemon with the image
-            let pokemon = Pokemon(name: "Pokemon", pokedexID: indexPath.row + 1)
+            var poke:Pokemon!
             
-            cell.configureCell(pokemon: pokemon)
+            if (inSearchMode) {
+                poke = filteredPokemon[indexPath.row]
+            } else {
+                poke = pokemon[indexPath.row]
+            }
+            
+            cell.configureCell(poke)
             return cell
             
         } else {
@@ -48,7 +112,11 @@ class ViewController: UIViewController, UICollectionViewDelegate, UICollectionVi
     // how many items there are in the collection view
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         
-        return 30
+        if inSearchMode {
+            return filteredPokemon.count
+        }
+        
+        return pokemon.count
     }
 
     func numberOfSections(in collectionView: UICollectionView) -> Int {
@@ -59,5 +127,48 @@ class ViewController: UIViewController, UICollectionViewDelegate, UICollectionVi
         
         return CGSize(width: 105, height: 105)
     }
+    
+    // make the keyboard disappear
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        view.endEditing(true)
+    }
+    
+    
+    // search bar function, called whenever we make a keystroke
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        
+        
+        if searchBar.text == nil || searchBar.text == "" {
+            inSearchMode = false
+            collection.reloadData()
+            
+            // make the keyboard disappear
+            view.endEditing(true)
+        } else {
+        
+            inSearchMode = true
+            
+            let lower = searchBar.text!.lowercased()
+            
+            filteredPokemon = pokemon.filter({$0.name.range(of: lower) != nil})
+            // think of $0 as a placeholder for each object in the pokemon array
+            
+            collection.reloadData()
+        }
+        
+    }
+
+    // to play/pause music
+    @IBAction func musicButtonPressed(_ sender: UIButton) {
+
+        if musicPlayer.isPlaying {
+            musicPlayer.pause()
+            sender.alpha = 0.2
+        } else {
+            musicPlayer.play()
+            sender.alpha = 1
+        }
+    }
+    
 }
 
