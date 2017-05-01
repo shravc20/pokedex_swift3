@@ -106,7 +106,16 @@ class ViewController: UIViewController, UICollectionViewDelegate, UICollectionVi
     // what you do when an item is selected/tapped
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         
+        // we're going to pass this along to the next VC
+        var poke:Pokemon!
         
+        if(inSearchMode) {
+            poke = filteredPokemon[indexPath.row]
+        } else {
+            poke = pokemon[indexPath.row]
+        }
+        
+        performSegue(withIdentifier: "PokemonDetailVC", sender: poke)
     }
     
     // how many items there are in the collection view
@@ -158,6 +167,20 @@ class ViewController: UIViewController, UICollectionViewDelegate, UICollectionVi
         
     }
 
+    // pass along pokemon object to PokemonDetailsVC
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+     
+        if segue.identifier == "PokemonDetailVC" {
+            
+            if let detailsVC = segue.destination as? PokemonDetailVC {
+                if let poke = sender as? Pokemon {
+                    detailsVC.pokemon = poke
+                }
+            }
+        }
+        
+    }
+    
     // to play/pause music
     @IBAction func musicButtonPressed(_ sender: UIButton) {
 
